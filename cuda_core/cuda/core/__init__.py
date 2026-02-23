@@ -61,6 +61,14 @@ from cuda.core._memoryview import (  # noqa: E402
 )
 from cuda.core._module import Kernel, ObjectCode  # noqa: E402
 from cuda.core._program import Program, ProgramOptions  # noqa: E402
+from cuda.core._tensor_map import (  # noqa: E402
+    TensorMapDescriptor,
+    TensorMapDataType,
+    TensorMapInterleave,
+    TensorMapL2Promotion,
+    TensorMapOOBFill,
+    TensorMapSwizzle,
+)
 from cuda.core._stream import (  # noqa: E402
     LEGACY_DEFAULT_STREAM,
     PER_THREAD_DEFAULT_STREAM,
