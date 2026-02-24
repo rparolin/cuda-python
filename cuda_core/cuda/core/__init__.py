@@ -64,6 +64,7 @@ from cuda.core._program import Program, ProgramOptions  # noqa: E402
 from cuda.core._tensor_map import (  # noqa: E402
     TensorMapDescriptor,
     TensorMapDataType,
+    TensorMapIm2ColWideMode,
     TensorMapInterleave,
     TensorMapL2Promotion,
     TensorMapOOBFill,
