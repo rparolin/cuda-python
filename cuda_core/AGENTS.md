@@ -126,3 +126,37 @@ This file describes `cuda_core`, the high-level Pythonic CUDA subpackage in the
   (See the "_handle incident" of PR #1660 for the cautionary tale.)
 - Use `nvmlReturn_t` for NVML calls and `cudaError_t` for cudart calls - do
   not mix.
+
+## Style conventions (cuda.core)
+
+### Stream argument shape
+
+Post-PR #2020, `Stream_accept(None)` raises. Two shapes are allowed
+for stream-scheduling APIs; do not invent a third:
+
+- **Resource / operation methods** (`MemoryResource.allocate`, etc.):
+  `stream` is **required and keyword-only**. No
+  `stream: Stream | None = None`, no fallback to `default_stream()`.
+- **`launch`-style free functions** (batched memory ops mirroring
+  `launch(stream, config, kernel, *args)`): `stream` is the **first
+  positional argument**, required.
+
+In both shapes the caller passes `device.default_stream` explicitly
+when they want the old "default stream" behavior.
+
+### Immutability mechanism
+
+`__slots__` already prevents attribute creation. Do not also override
+`__setattr__` to enforce immutability — pick one mechanism, and
+`__slots__` is the one in use across `cuda.core`.
+
+### Test conventions
+
+- When a test file repeats the same 4+ line setup preamble across
+  more than ~3 tests, extract a `@pytest.fixture`. Parametrize or
+  layer fixtures for skip-predicate variants.
+- Reuse production helpers in tests (e.g.,
+  `_managed_buffer._get_int_attr`) instead of reimplementing them.
+- Before adding a local `_skip_if_*`, check whether `conftest`
+  already has an equivalent — extend the shared helper rather than
+  shadowing it.
