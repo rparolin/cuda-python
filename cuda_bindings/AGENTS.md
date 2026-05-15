@@ -65,3 +65,35 @@ subpackage in the `cuda-python` monorepo.
   `docs/source/module/` and tests in `tests/`.
 - Prefer changes that are easy to regenerate/rebuild rather than patching
   generated output directly.
+
+## Cython conventions (hand-written modules)
+
+These apply to hand-written Cython modules (e.g., `cuda/bindings/_nvml.pyx`),
+not to generated bindings.
+
+- For `cdef` functions that can raise, prefer `cdef int foo(...) except? -1`
+  over `cdef void foo(...) except*`. The int form is faster and Cython 3
+  warns on `void + except*`.
+- Keep `.pxd` and `.pyx` in lockstep. Every `noexcept` / `nogil` / `except+`
+  qualifier must match on both sides.
+- Hand-written `.pxd` files (e.g., `lowpp.pxd`) are private and unstable;
+  prefer auto-generated headers when available.
+- Use `nvmlReturn_t` for NVML calls; do not mix with `cudaError_t`.
+- Mark `cdef` functions `nogil` when they do not touch Python state.
+- Use `cdef inline` for header-only helpers.
+- Do not write fused types by hand for the public API - they are verbose and
+  defeat the type-erasure goal. Write separate helpers (e.g.,
+  `HANDLE_RETURN_NVRTC` vs `HANDLE_RETURN`) instead.
+
+## C/C++ headers and cross-platform
+
+- In C/C++ headers, prefer `<cstddef>` / `<cstdint>` inside `__cplusplus`
+  guards and `<stddef.h>` / `<stdint.h>` outside. Match the surrounding
+  convention.
+- For C++ free-threading correctness (Python 3.13t), static
+  `if (!ptr) { ptr = new ...; }` patterns are UB. Use `std::atomic` with
+  compare-exchange.
+- `std::make_shared` does NOT support custom deleters; use
+  `std::shared_ptr<T>(new T(...), deleter)` when a custom deleter is needed.
+- POSIX-only APIs (`gmtime_r`, etc.) require Windows alternatives
+  (`gmtime_s`). Do not assume POSIX without a platform branch.

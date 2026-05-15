@@ -63,3 +63,66 @@ This file describes `cuda_core`, the high-level Pythonic CUDA subpackage in the
   call-site consistency.
 - Prefer explicit error propagation over silent fallback paths.
 - If you change public behavior, update tests and docs under `docs/source/`.
+
+## Cython conventions
+
+- For `cdef` functions that can raise (e.g., via `HANDLE_RETURN`), prefer
+  `cdef int foo(...) except? -1` over `cdef void foo(...) except*`. Cython 3
+  warns on `void + except*` and the int form is faster.
+- Keep `.pxd` and `.pyx` declarations in lockstep. Every `cpdef` in `.pyx`
+  needs a `.pxd` declaration; every `noexcept`/`nogil`/`except+` qualifier
+  must match on both sides.
+- When you add a new `*.pxi` to a Cython module, also add it to
+  `cuda_core/MANIFEST.in`. The sdist build is not tested in CI, so this is
+  silently wrong otherwise.
+- In hot paths (kernel-arg dispatch, per-launch property access), avoid
+  Python-object round-trips. Prefer `cimport cydriver` for CUDA types, typed
+  memoryviews, `_PyLong_AsByteArray` / `PyLong_AsNativeBytes`, and list
+  comprehensions over generator expressions. Do not put Python `IntEnum`
+  lookups on the hot path - use `cydriver` C enums internally.
+- Memoize expensive validation (driver-API checks, capability probes,
+  `hasattr` walks) at construction time, not per-call. Module-level imports,
+  not function-local, for capability/version probes.
+- Mark `cdef` functions `nogil` when they do not touch Python state.
+- Never call Python methods or mutate Python attributes inside `__dealloc__` -
+  Cython requires `__dealloc__` to handle only C-level cleanup.
+- Cython refcount correctness: call `Py_DECREF` (or the typed `cimport`'d
+  equivalent) in `except:` branches when you incref'd before the failing call.
+- `cdef str` functions implicitly allow `None` returns - declare and check
+  explicitly when None is not valid.
+- Do not move declarations out of `cdef extern from` blocks - it changes name
+  mangling and may break ABI.
+- Use the exact native type at the CUDA boundary: `cpp_bool` for `bool`,
+  `intptr_t` for handles, `cydriver.CU<Type>` typedefs for driver types.
+  Never substitute a generic `int32_t`.
+- Do not intervene with manual C-API calls when Cython generates correct code.
+
+## Resource lifetime and stream affinity
+
+- `stream=None` is forbidden in `cuda.core` public APIs. Raise on a `None`
+  stream. (See `_memoryview.pyx` for canonical `BufferError("stream=None is
+  ambiguous...")` pattern.)
+- Never hard-code stream 0. Resource cleanup paths (`close()`, unmap, etc.)
+  must use the stream the resource was mapped or created on, or accept an
+  explicit `stream=` argument.
+- Keep strong references to the carrier object, not just the source. For
+  DLPack inputs, hold the `StridedMemoryView` (or at least its metadata
+  capsule); for ctypes callbacks, hold the `CFUNCTYPE` wrapper.
+- When a public property's value semantics change, treat it as a breaking
+  change requiring deprecation.
+
+## API surface (cuda.core-specific)
+
+- Public enums and type aliases live in `cuda.core.typing`, not in the feature
+  module that uses them. Prefer `StrEnum`-typed `Literal[...]` strings over
+  re-exporting `IntEnum`s from `cuda.bindings`. For mode parameters, prefer
+  plain strings to enums.
+- Do not crowd the `cuda.core` top-level namespace with descriptor types.
+  Route new DLPack-style conversions through `StridedMemoryView.as_X(...)`
+  (parallel to `as_mdspan`), and resource constructors through
+  `Device.create_X(...)`.
+- Do not expose raw CUDA handles via `__int__` or public attributes. The
+  established pattern is `_handle`, reached only by internal code or tests.
+  (See the "_handle incident" of PR #1660 for the cautionary tale.)
+- Use `nvmlReturn_t` for NVML calls and `cudaError_t` for cudart calls - do
+  not mix.

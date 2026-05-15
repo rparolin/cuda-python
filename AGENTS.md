@@ -106,6 +106,117 @@ repos/{owner}/{repo}/milestones --jq '.[].title'`, and pick the best match.
   with a concrete edit or an explicit blocker plus a targeted question.
 
 
+# Code review patterns to avoid
+
+These conventions are enforced by reviewers across the cuda-python codebase
+beyond what `ruff` and `cython-lint` catch. Following them avoids review
+iteration. Cython-specific and package-specific patterns live in the matching
+sub-package `AGENTS.md`.
+
+## Exception handling
+
+- Catch the narrowest exception. Prefer
+  `except ModuleNotFoundError as exc: if exc.name == "foo": ...`
+  over `except ImportError` or `except Exception`. For internal-only imports,
+  leave the import unconditional - surface bugs rather than mask them.
+- An optional side effect (cache write, telemetry, log) must NEVER convert a
+  successful primary operation into a failure. Wrap side-effects in narrow
+  `try/except` that logs and continues; return the primary result.
+- Never use `assert` for runtime input or invariant validation in production
+  code - it is stripped under `python -O`. Raise `ValueError` / `TypeError`
+  / `CUDAError` instead. `assert` in tests is fine.
+- Do not use `try/except AttributeError` for protocol detection; use `hasattr`
+  or `getattr(obj, name, default)`.
+- Prefer custom exception subclasses over `RuntimeError`. Do not re-invent
+  exception classes that already exist in another sub-package (e.g.,
+  `NVVMError` is in `cuda.bindings`; do not redefine it in `cuda.core`).
+
+## Public API surface
+
+- Default new helper types to underscore-private. Expose functionality through
+  public `from_*` classmethods on the user-facing class, not as a public
+  constructor argument requiring a helper type.
+- Prefix non-public submodules with `_` so they do not appear in tab
+  completion (`_device.pyx`, `_module.py`). In tests and examples, import the
+  public class from the canonical namespace (`cuda.core.Kernel`), never from
+  `cuda.core._module.Kernel`.
+- Encapsulate parameter bundles in an `XOptions` dataclass with validation in
+  `__post_init__` rather than long parameter lists.
+- Do not expose `initialize()` / `*_init()` public side-effect entry points.
+  Use lazy initialization triggered by the first real call (mirrors
+  `cuda.core` not exposing `cuInit()`). If lazy init must coordinate threads,
+  use a lock with double-checked locking and set the "done" flag *after* the
+  protected block, not before.
+
+## Testing
+
+- Use `pytest.importorskip("pkg", minversion="X.Y")` over try/except import
+  gates in tests.
+- Do not bind a value inside `with unsupported_before(...):` / `try:` and use
+  it later - if the block skips or raises, you get `NameError`.
+- Use `assert all(x == y for ...)`. `assert [x == y for ...]` is truthy for
+  any nonempty list.
+- Always prefix `pytest.skip(f"...")` with `f` when the message has braces.
+- State-mutating fixtures must save and restore the prior state.
+- `functools.cache`'d functions need `cache_clear()` in tests that patch
+  internals; otherwise prior tests poison results.
+- Examples must run standalone - do not import `pytest` or other test
+  infrastructure in them.
+- Real tests are preferred over pure mocks where the surface is reachable.
+  Use `info_summary_append(...)` for context lines visible in CI logs.
+- Small single-purpose fixtures beat one large parameterized fixture with
+  conditional branches.
+
+## CUDA-version and cross-platform gating
+
+- `cuda.core` must build and run against both `cuda-bindings` 12.x AND 13.x.
+  Version-gate NVML imports and decorate NVML tests with the matching skip
+  marker. For new CUDA driver symbols, gate at compile time with the
+  `CUDA_CORE_BUILD_MAJOR` mechanism used elsewhere in the build.
+- Always compare versions as three-tuples; do not mix two-tuple and
+  three-tuple forms.
+- POSIX-only APIs (`gmtime_r`, etc.) need a Windows alternative
+  (`gmtime_s`). Do not assume POSIX without an `#ifdef` or runtime branch.
+
+## CI / workflow
+
+- SHA-pin third-party GitHub Actions. The trailing `# vX.Y.Z` comment must
+  match the tag the SHA points to.
+- `github.repository_owner` is case-sensitive in GitHub Actions expressions.
+  Match `NVIDIA` exactly.
+- Scope token permissions narrowly. Use `pull-requests: write` for label
+  edits via `gh pr edit`, not blanket `issues: write`.
+- `ci/tools/` is for CI-invoked scripts; `toolshed/` is for ad-hoc utilities
+  not run by CI.
+- Run repo-managed commands via `pixi run --manifest-path <pkg> ...` rather
+  than raw `python` / `pytest`.
+
+## PR scoping and naming
+
+- Split unrelated API changes out of refactors into separate PRs - subtle
+  changes get drowned out and entangled side-effects are hard to sort later.
+- One release-notes PR per release.
+- For unreleased experimental modules, do not add backward-compat hacks; just
+  change the code.
+- Do not introduce new third-party runtime dependencies for niche features.
+  Vendor minimal logic instead.
+- Avoid `utils.pyx` / `util.py` dumping grounds. Name helper files for what
+  they hold (`bitmasks.pyx`, `version_checks.py`).
+- Do not use 2-letter names. `get_cuda_version` is ambiguous (KMD vs UMD vs
+  CTK vs NVCC vs NVRTC) - be specific: `get_driver_version`,
+  `get_nvrtc_version`.
+- Method naming: verb (`create_stream`, `to_X`) when a new resource instance
+  is returned; noun property (`context`) when the result is a cheap 1:1
+  reference to existing state.
+- Do not repeat the enum class name in members (`Policy.MANUAL`, not
+  `Policy.POLICY_MANUAL`).
+- For library deprecations use `DeprecationWarning` (off by default; pytest
+  collects) - not `FutureWarning` (always on; reserved for changes users are
+  guaranteed to want to know about).
+- Match C-side macro spelling exactly when wrapping
+  (`NVML_STRUCT_VERSION`, not `NVML_VERSION_STRUCT`).
+
+
 # Editing constraints
 
 - Default to ASCII when editing or creating files. Only introduce non-ASCII or

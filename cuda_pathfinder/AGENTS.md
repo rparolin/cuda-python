@@ -48,6 +48,13 @@ Windows.
 - **Prefer focused abstractions**: if a change is platform-specific, route it
   through existing platform abstraction points instead of branching in many call
   sites.
+- **Order search paths and catalog entries newest-first**: place the newest
+  CUDA major (e.g., cu13) before older versions (cu12). Pathfinder's bias is
+  toward finding newer libraries first.
+- **`locate_*` vs `find_*` naming**: `locate_*` returns a dataclass with
+  metadata; `find_*` returns just the path. Keep these distinct.
+- **Use `__post_init__` for dataclass normalization** rather than per-call-site
+  normalization. This is the standard pattern in this package.
 
 ## Testing expectations
 
