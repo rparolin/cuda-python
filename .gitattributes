@@ -5,6 +5,7 @@
 cuda_core/cuda/core/_include/dlpack.h -text !eol diff
 # git should not convert line endings in PNG files
 *.png binary
+*.gif binary
 *.svg binary
 *.pdf binary
 *.pptx binary

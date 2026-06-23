@@ -35,8 +35,8 @@
   .big{font-size:2rem;font-weight:800}
   .kpis{display:flex;gap:1.4rem;flex-wrap:wrap;margin-top:1rem}
   .kpi{background:linear-gradient(180deg,var(--bg2),#0e1318);border:1px solid var(--line);
-       border-radius:14px;padding:1.3rem 1.5rem;min-width:200px}
-  .kpi .v{font-size:2.5rem;font-weight:800;letter-spacing:-.02em}
+       border-radius:14px;padding:1rem 1.2rem;min-width:148px}
+  .kpi .v{font-size:2rem;font-weight:800;letter-spacing:-.02em}
   .kpi .l{color:var(--mut);font-family:var(--mono);font-size:.82rem;margin-top:.35rem;text-transform:uppercase;letter-spacing:.12em}
   table{border-collapse:collapse;font-family:var(--mono);font-size:1rem;margin-top:.6rem}
   th,td{padding:.55rem 1.1rem;text-align:left;border-bottom:1px solid var(--line)}
@@ -87,8 +87,9 @@
 
   <section class="slide">
     <div class="eyebrow">Performance profiling · numba CUDA backends</div>
-    <div class="grow">
-      <h1><span style="color:var(--classic)">numba-cuda</span> vs<br><span style="color:var(--mlir)">numba-cuda-mlir</span></h1>
+    <div class="grow" style="flex-direction:row;gap:3vw;align-items:center">
+      <div style="flex:1.5">
+      <h1 style="font-size:3.5rem"><span style="color:var(--classic)">numba-cuda</span> vs<br><span style="color:var(--mlir)">numba-cuda-mlir</span></h1>
       <p class="sub"><b>The question:</b> does the choice of CUDA compiler backend change performance — and where?
       <b>The method:</b> profile the identical Stable-Fluids GPU solver (one source file, 9 kernels) built by both
       compilers, holding the GPU, CUDA 13.3 toolchain, workload, and Python version constant — so any difference is
@@ -97,6 +98,15 @@
         <div class="kpi"><div class="v">2</div><div class="l">compilers · one identical source</div></div>
         <div class="kpi"><div class="v">9</div><div class="l">kernels · grids 256²–2048²</div></div>
         <div class="kpi"><div class="v">5</div><div class="l">axes: JIT · code · runtime · launch · graphs</div></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:.92rem;color:var(--mut);margin-top:1.5rem">
+        Rob Parolin · <span style="color:var(--ink)">rparolin@nvidia.com</span>
+      </div>
+      </div>
+      <div style="flex:1;text-align:center">
+        <img src="cuda-fluid-sim.gif" alt="Stable-Fluids simulation"
+             style="width:100%;max-width:330px;border-radius:14px;border:1px solid var(--line)">
+        <div style="font-family:var(--mono);font-size:.82rem;color:var(--mut);margin-top:.7rem">the workload — 512² Stable-Fluids</div>
       </div>
     </div>
   </section>
