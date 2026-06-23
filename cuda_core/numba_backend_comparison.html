@@ -80,16 +80,17 @@
 <div class="deck" id="deck">
 
   <section class="slide">
-    <div class="eyebrow">GPU compiler comparison · Stable-Fluids</div>
+    <div class="eyebrow">Performance profiling · numba CUDA backends</div>
     <div class="grow">
       <h1><span style="color:var(--classic)">numba-cuda</span> vs<br><span style="color:var(--mlir)">numba-cuda-mlir</span></h1>
-      <p class="sub">Same 9 kernels, one source file, two compilers. Holding the GPU, CUDA 13.3 ptxas,
-      workload and Python version constant — varying only the codegen frontend (NVVM vs MLIR).
-      JIT time · PTX/SASS codegen · runtime &amp; FPS · CUDA graphs.</p>
+      <p class="sub"><b>The question:</b> does the choice of CUDA compiler backend change performance — and where?
+      <b>The method:</b> profile the identical Stable-Fluids GPU solver (one source file, 9 kernels) built by both
+      compilers, holding the GPU, CUDA 13.3 toolchain, workload, and Python version constant — so any difference is
+      the compiler alone.</p>
       <div class="kpis">
-        <div class="kpi"><div class="v" style="color:var(--mlir)">bit-exact</div><div class="l">output equivalence</div></div>
-        <div class="kpi"><div class="v">≈ 1024²</div><div class="l">launch→compute crossover</div></div>
-        <div class="kpi"><div class="v" style="color:var(--mlir)">parity</div><div class="l">under CUDA graphs</div></div>
+        <div class="kpi"><div class="v">2 → 1</div><div class="l">compilers · one shared source</div></div>
+        <div class="kpi"><div class="v">9</div><div class="l">kernels · grids 256²–2048²</div></div>
+        <div class="kpi"><div class="v">5</div><div class="l">axes: JIT · code · runtime · launch · graphs</div></div>
       </div>
     </div>
   </section>
@@ -127,19 +128,25 @@
     <div class="eyebrow">03 · Why — host launch overhead</div>
     <h2>Equal GPU time; unequal dispatch cost</h2>
     <div class="grow" style="flex-direction:row;gap:3vw;align-items:center">
-      <div style="flex:1"><div class="chartwrap"><svg id="c-launch" viewBox="0 0 520 420"></svg></div></div>
+      <div style="flex:1">
+        <div class="legend" style="margin-bottom:.4rem;font-size:.85rem">
+          <span><i class="sw" style="background:#3a4654"></i> GPU compute (equal)</span>
+          <span><i class="sw" style="background:#ff7a59"></i> host dispatch</span>
+        </div>
+        <div class="chartwrap"><svg id="c-launch" viewBox="0 0 520 420"></svg></div>
+      </div>
       <div style="flex:1">
         <ul class="clean">
-          <li>GPU time/frame is <span class="hl">equal</span> — 0.34 ms both (nsys); 30 regs, 79% SM (ncu).</li>
-          <li>The gap is pure dispatch: <span class="hlc">8.6 µs</span> vs <span class="hl">5.3 µs</span> per launch.</li>
-          <li>× 37 launches/frame = the <b>entire</b> difference.</li>
+          <li>The steel base — GPU compute — is the <span class="hl">same 0.34 ms</span> in both.</li>
+          <li>The coral top — host dispatch — differs: <span class="hlc">8.6 µs</span> vs <span class="hl">5.3 µs</span> per launch.</li>
+          <li>× 37 launches/frame builds the total; mlir is <span class="hl">~38% lighter</span> to dispatch.</li>
         </ul>
       </div>
     </div>
   </section>
 
   <section class="slide">
-    <div class="eyebrow">04 · The vector that flips the headline</div>
+    <div class="eyebrow">04 · CUDA graphs</div>
     <h2>CUDA graphs erase the gap</h2>
     <div class="legend">
       <span><i class="sw" style="background:#3a4654"></i> eager</span>
@@ -191,51 +198,55 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">08 · LTO isolation — the real codegen story</div>
-    <h2>The tightness is LTO, not the frontend</h2>
+    <div class="eyebrow">08 · Fair comparison — matched optimization</div>
+    <h2>Match the settings, and the compilers tie</h2>
     <div class="grow" style="flex-direction:row;gap:3vw;align-items:center">
       <div style="flex:1">
-        <table style="font-size:1.3rem">
-          <tr><th>pressure_jacobi regs</th><th>LTO off</th><th>LTO on</th></tr>
-          <tr><td class="c">classic (NVVM)</td><td>30</td><td>30</td></tr>
-          <tr><td class="m">mlir (MLIR)</td><td class="hw">50</td><td>30</td></tr>
+        <table style="font-size:1.25rem">
+          <tr><th>registers / thread<br><span style="font-size:.74rem;color:var(--mut);text-transform:none;letter-spacing:0">pressure_jacobi · fewer = better</span></th><th>LTO off</th><th>LTO on</th></tr>
+          <tr><td class="c">classic</td><td>30</td><td>30</td></tr>
+          <tr><td class="m">mlir</td><td class="hw">50</td><td><span class="hl">30</span></td></tr>
         </table>
       </div>
       <div style="flex:1">
         <ul class="clean">
-          <li>At <b>matched LTO the frontends are identical</b> — 30 = 30.</li>
-          <li>mlir's default-config edge is the <span class="hl">LTO pipeline</span>; the MLIR frontend alone is <span class="hw">worse</span> (50).</li>
-          <li>classic's NVVM reaches 30 <b>without</b> LTO.</li>
+          <li><b>LTO</b> (link-time optimization) is a knob <b>both</b> compilers have.</li>
+          <li>mlir turns it <b>on</b> by default; classic leaves it <b>off</b> — that's the whole reason mlir's code looked tighter on slides 5–6.</li>
+          <li>Turn LTO on for both → <span class="hl">identical, 30 regs</span>. Neither compiler is fundamentally better.</li>
         </ul>
       </div>
     </div>
   </section>
 
   <section class="slide">
-    <div class="eyebrow">09 · Verdict per vector</div>
-    <h2>Same machine code; different launch path</h2>
+    <div class="eyebrow">09 · Scorecard</div>
+    <h2>A tie on everything — except how fast they launch kernels</h2>
     <div class="grow">
       <table class="verdict">
-        <tr><th>vector</th><th>winner</th><th>magnitude</th></tr>
-        <tr><td>equivalence</td><td class="tie">tie</td><td>bit-exact, all sizes</td></tr>
-        <tr><td>GPU codegen (runtime)</td><td class="tie">tie</td><td>equal GPU time / occupancy</td></tr>
-        <tr><td>static SASS (default)</td><td class="m">mlir</td><td>−10–19% — but = at matched LTO</td></tr>
-        <tr><td>JIT compile time</td><td class="m">mlir</td><td>~14% faster</td></tr>
-        <tr><td>eager FPS &lt; 1024²</td><td class="m">mlir</td><td>+38% (5.3 vs 8.6 µs/launch)</td></tr>
-        <tr><td>FPS ≥ 1024² · with graphs</td><td class="tie">tie</td><td>compute-bound parity</td></tr>
+        <tr><th>what we measured</th><th>winner</th><th>by how much</th></tr>
+        <tr><td>output correctness</td><td class="tie">tie</td><td>exact same numbers, every grid size</td></tr>
+        <tr><td>GPU kernel speed</td><td class="tie">tie</td><td>same runtime &amp; occupancy</td></tr>
+        <tr><td>GPU code size</td><td class="tie">tie*</td><td>mlir writes ~15% fewer instrs — but no faster; equal once both use LTO</td></tr>
+        <tr><td>compile time</td><td class="m">mlir</td><td>~14% faster</td></tr>
+        <tr><td>kernel-launch overhead</td><td class="m">mlir</td><td>5.3 vs 8.6 µs/launch → +38% FPS on small grids</td></tr>
+        <tr><td>FPS on big grids / with graphs</td><td class="tie">tie</td><td>identical</td></tr>
       </table>
+      <p class="note" style="margin-top:1.2rem;border-left:3px solid var(--accent);padding-left:1rem">
+        <b>Core idea:</b> for performance the two compilers are interchangeable — same results, same kernel speed.
+        mlir's <b>only</b> real edge is cheaper kernel launching, which matters on small workloads and <span class="hl">vanishes with CUDA graphs</span>.</p>
     </div>
   </section>
 
   <section class="slide">
     <div class="eyebrow">10 · Takeaways</div>
-    <h2>Pick on launch model, not codegen</h2>
+    <h2>Pick on launch model, not the compiler</h2>
     <div class="grow">
       <ul class="clean">
-        <li>Equivalent GPU code: <span class="hl">bit-exact</span>, equal runtime, equal occupancy.</li>
-        <li>Only real gap: eager launch overhead (mlir <span class="hl">−38%</span>) — erased by CUDA graphs. mlir also compiles ~14% faster.</li>
-        <li>Win #1: <b>float32 literals</b> kill the float64 promotion — both backends.</li>
-        <li>Win #2: <b>CUDA graphs</b> ≈<span class="hl">3× FPS</span> when launch-bound — both backends.</li>
+        <li><b>Same results, same kernel speed</b> — identical output; equal GPU time and occupancy.</li>
+        <li><b>mlir launches kernels ~38% cheaper</b> — 5.3 vs 8.6 µs → +38% FPS below 1024².</li>
+        <li><b>CUDA graphs ≈3× FPS</b> on both backends — and erase the mlir-vs-classic gap.</li>
+        <li><b>mlir compiles ~14% faster</b> — 1.17 s vs 1.36 s for all 9 kernels.</li>
+        <li><b>Biggest latent win:</b> kernels run in float64 (Python literals); float32 would cut math on both.</li>
       </ul>
     </div>
   </section>
@@ -273,6 +284,30 @@ function groupedBars(svg,{labels,series,ymax,fmt,unit}){
   if(unit)svg.appendChild(txt(L-44,T-6,unit,"axtxt","start"));
 }
 
+function stackedBars(svg,{labels,segments,ymax,unit,fmt}){
+  const W=svg.viewBox.baseVal.width,H=svg.viewBox.baseVal.height;
+  const L=58,R=18,T=24,B=64,pw=W-L-R,ph=H-T-B;
+  fmt=fmt||(v=>v);
+  ymax=ymax||Math.max(...labels.map((_,gi)=>segments.reduce((s,seg)=>s+seg.data[gi],0)))*1.18;
+  for(let i=0;i<=4;i++){const y=T+ph*i/4,v=ymax*(1-i/4);
+    svg.appendChild(el("line",{class:"gl",x1:L,y1:y,x2:W-R,y2:y}));
+    svg.appendChild(txt(L-10,y+4,fmt(v),"axtxt","end"));}
+  const g=labels.length, gw=pw/g, bw=Math.min(gw*0.5,96), pad=(gw-bw)/2;
+  labels.forEach((lab,gi)=>{
+    const x=L+gi*gw+pad; let yb=T+ph, total=0;
+    segments.forEach(seg=>{
+      const v=seg.data[gi]; total+=v;
+      const h=ph*v/ymax, y=yb-h, col=seg.barColors?seg.barColors[gi]:seg.color;
+      svg.appendChild(el("rect",{x,y,width:bw,height:h,rx:3,fill:col}));
+      if(h>26)svg.appendChild(txt(x+bw/2,y+h/2+5,fmt(v),"dlbl"));
+      yb=y;
+    });
+    svg.appendChild(txt(x+bw/2,yb-12,fmt(total),"dlbl"));
+    svg.appendChild(txt(x+bw/2,H-B+24,lab,"axtxt"));
+  });
+  if(unit)svg.appendChild(txt(L-44,T-6,unit,"axtxt","start"));
+}
+
 function lineChart(svg,{xlabels,series,ymax,unit,annos}){
   const W=svg.viewBox.baseVal.width,H=svg.viewBox.baseVal.height;
   const L=64,R=24,T=24,B=58,pw=W-L-R,ph=H-T-B;
@@ -301,10 +336,11 @@ window.addEventListener("DOMContentLoaded",()=>{
     ymax:2400,unit:"FPS",
     annos:[{x:0.12,y:60,t:"launch-bound"},{x:0.82,y:60,t:"compute-bound"},{x:0.66,y:430,t:"crossover ≈1024²"}]
   });
-  groupedBars(document.getElementById("c-launch"),{
+  stackedBars(document.getElementById("c-launch"),{
     labels:["classic","mlir"],
-    series:[{barColors:[C,M],data:[8.6,5.3]}],
-    ymax:10,fmt:v=>v.toFixed(1),unit:"µs / launch"
+    segments:[{name:"GPU compute",color:"#3a4654",data:[0.34,0.34]},
+              {name:"host dispatch",color:"#ff7a59",data:[0.32,0.20]}],
+    ymax:0.8,fmt:v=>v.toFixed(2),unit:"ms / frame"
   });
   groupedBars(document.getElementById("c-graph"),{
     labels:["256² classic","256² mlir","512² classic","512² mlir"],
