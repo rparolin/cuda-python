@@ -119,8 +119,8 @@
       <span><i class="sw" style="background:var(--mlir)"></i> mlir (MLIR)</span>
     </div>
     <div class="chartwrap"><svg id="c-fps" viewBox="0 0 1000 480"></svg></div>
-    <p class="note">Below ~1024² the sim is <b>host-launch-bound</b> (37 tiny launches/frame) and mlir's lighter
-    dispatch wins ~38%. At/above the crossover the GPU dominates and the two are <span class="hl">identical</span>.</p>
+    <p class="note">Small grids = <b>host-launch-bound</b> (37 launches/frame): mlir wins <span class="hlc">~38%</span>.
+    Big grids = GPU-bound: <span class="hl">identical</span>.</p>
   </section>
 
   <section class="slide">
@@ -130,9 +130,9 @@
       <div style="flex:1"><div class="chartwrap"><svg id="c-launch" viewBox="0 0 520 420"></svg></div></div>
       <div style="flex:1">
         <ul class="clean">
-          <li>Pure GPU time/frame is <span class="hl">equal</span> — nsys 0.34 ms both at 512²; ncu: 30/30 regs, ~77% occupancy, 79% SM both.</li>
-          <li>The gap is entirely the <b>Python→driver launch path</b>: <span class="hlc">8.6 µs</span> vs <span class="hl">5.3 µs</span> per launch.</li>
-          <li>× 37 launches/frame ≈ the measured wall-vs-GPU gap. mlir dispatches ~38% cheaper.</li>
+          <li>GPU time/frame is <span class="hl">equal</span> — 0.34 ms both (nsys); 30 regs, 79% SM (ncu).</li>
+          <li>The gap is pure dispatch: <span class="hlc">8.6 µs</span> vs <span class="hl">5.3 µs</span> per launch.</li>
+          <li>× 37 launches/frame = the <b>entire</b> difference.</li>
         </ul>
       </div>
     </div>
@@ -146,20 +146,19 @@
       <span><i class="sw" style="background:var(--mlir)"></i> graphed</span>
     </div>
     <div class="chartwrap"><svg id="c-graph" viewBox="0 0 1000 460"></svg></div>
-    <p class="note">Capture the 37 launches once, replay as one graph launch. Both backends <span class="hl">converge to the same FPS</span>
-    (classic gains <span class="hlc">3.7×</span> vs mlir 2.5× — it had more overhead to remove). mlir's edge is an eager-path effect only.</p>
+    <p class="note">Capture once, replay as a single launch. Both <span class="hl">converge to the same FPS</span> —
+    classic gains more (<span class="hlc">3.7×</span> vs 2.5×). mlir's eager edge <span class="hl">disappears</span>.</p>
   </section>
 
   <section class="slide">
     <div class="eyebrow">05 · Codegen — registers per thread</div>
-    <h2>mlir slightly tighter by default — but see slide 08</h2>
+    <h2>Slightly fewer registers — and it doesn't matter</h2>
     <div class="legend">
       <span><i class="sw" style="background:var(--classic)"></i> classic</span>
       <span><i class="sw" style="background:var(--mlir)"></i> mlir</span>
     </div>
     <div class="chartwrap"><svg id="c-regs" viewBox="0 0 1000 440"></svg></div>
-    <p class="note">All under the ~42-register occupancy threshold at 16×16 → these deltas do <b>not</b> change occupancy.
-    Dominant <b>pressure_jacobi</b> is 30 = 30.</p>
+    <p class="note">All below the 42-reg occupancy limit → <b>no</b> occupancy change. Dominant <b>pressure_jacobi</b>: 30 = 30.</p>
   </section>
 
   <section class="slide">
@@ -170,8 +169,8 @@
       <span><i class="sw" style="background:var(--mlir)"></i> mlir</span>
     </div>
     <div class="chartwrap"><svg id="c-sass" viewBox="0 0 1000 440"></svg></div>
-    <p class="note">mlir is −10–19% on the stencil kernels, classic wins colorize — yet <b>GPU runtime is identical</b>:
-    these kernels are <span class="hw">float64-throughput bound</span> (Python literals promote to f64), not instruction-issue bound.</p>
+    <p class="note">mlir trims −10–19% on stencils, classic wins colorize — yet <b>GPU time is identical</b>.
+    The limiter is <span class="hw">float64 throughput</span> (Python literals promote), not instruction count.</p>
   </section>
 
   <section class="slide">
@@ -233,10 +232,10 @@
     <h2>Pick on launch model, not codegen</h2>
     <div class="grow">
       <ul class="clean">
-        <li>The two compilers generate <span class="hl">equivalent GPU code</span> — bit-exact, equal GPU runtime, identical occupancy; the SASS edge is an LTO effect classic matches at equal LTO.</li>
-        <li>The only real-world difference is <b>eager-mode launch overhead</b> — mlir ~38% cheaper, matters only below ~1024², and <span class="hl">vanishes under CUDA graphs</span>. mlir also compiles ~14% faster.</li>
-        <li>Backend-independent win #1: kernels run in <span class="hw">float64</span> (Python literals) — <b>float32 literals</b> would cut arithmetic on both.</li>
-        <li>Backend-independent win #2: launch-bound below ~1024² — <b>CUDA graphs</b> roughly <span class="hl">triple FPS</span> on both.</li>
+        <li>Equivalent GPU code: <span class="hl">bit-exact</span>, equal runtime, equal occupancy.</li>
+        <li>Only real gap: eager launch overhead (mlir <span class="hl">−38%</span>) — erased by CUDA graphs. mlir also compiles ~14% faster.</li>
+        <li>Win #1: <b>float32 literals</b> kill the float64 promotion — both backends.</li>
+        <li>Win #2: <b>CUDA graphs</b> ≈<span class="hl">3× FPS</span> when launch-bound — both backends.</li>
       </ul>
     </div>
   </section>
