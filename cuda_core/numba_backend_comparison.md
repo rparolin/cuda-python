@@ -90,6 +90,13 @@ which absorbs one-time backend init). No on-disk cache → paid every process.
 - Per-launch host dispatch (no-op kernel, isolated): **classic 8.6 µs, mlir
   5.3 µs** (mlir −38%). ×37 launches ≈ the measured wall-vs-GPU gap. This is the
   entire source of the eager-mode FPS difference.
+- Attribution (cProfile of a tight launch loop): classic makes **~2× the Python
+  calls per launch (69 vs 34)**. The extra classic cost is re-resolving the CUDA
+  context every launch (`get_or_create_context`, ~⅓ of its launch path),
+  heavier argument prep (`_prepare_args`/`to_device`/`wrap_arg`), and
+  safety-wrapped driver calls (`safe_cuda_api_call` + error check, 2×/launch)
+  plus a per-launch `get_cufunc` lookup. mlir caches the array layout and takes
+  a leaner path to the launch.
 
 ## 5. Launch model — eager vs CUDA graphs (dedicated vector)
 

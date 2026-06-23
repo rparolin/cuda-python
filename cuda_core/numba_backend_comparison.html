@@ -140,6 +140,7 @@
           <li>The steel base — GPU compute — is the <span class="hl">same 0.34 ms</span> in both.</li>
           <li>The coral top — host dispatch — differs: <span class="hlc">8.6 µs</span> vs <span class="hl">5.3 µs</span> per launch.</li>
           <li>× 37 launches/frame builds the total; mlir is <span class="hl">~38% lighter</span> to dispatch.</li>
+          <li><b>Why:</b> classic runs ~2× the Python per launch (<span class="hlc">69</span> vs <span class="hl">34</span> calls) — re-resolving the CUDA context and re-prepping args every time; mlir caches both.</li>
         </ul>
       </div>
     </div>
