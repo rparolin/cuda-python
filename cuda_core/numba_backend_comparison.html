@@ -62,6 +62,12 @@
   .nav{position:fixed;top:0;bottom:0;width:13vw;cursor:pointer;z-index:5}
   .nav.l{left:0} .nav.r{right:0}
   .foot{position:fixed;top:2.6vh;right:3vw;font-family:var(--mono);font-size:.74rem;color:#445}
+  .code{font-family:var(--mono);font-size:.66rem;line-height:1.42;background:#080b0e;
+        border:1px solid var(--line);border-left:3px solid var(--mlir);border-radius:8px;
+        padding:.5rem .75rem;white-space:pre;overflow:hidden;color:#cdd6df}
+  .code .c{color:#5f6f7e} .code .k{color:#9cd11f}
+  .codelbl{font-family:var(--mono);font-size:.8rem;margin:0 0 .3rem;font-weight:700}
+  .codelbl b{color:var(--classic)}
   @page{size:1280px 720px;margin:0}
   @media print{
     html,body{height:auto;overflow:visible;background:var(--bg)}
@@ -147,7 +153,51 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">04 · CUDA graphs</div>
+    <div class="eyebrow">04 · Why, in code — the classic launch path</div>
+    <h2>Where classic spends the extra per-launch time</h2>
+    <div class="grow" style="flex-direction:row;gap:2vw;align-items:center">
+      <div style="flex:1.45;display:flex;flex-direction:column;gap:.7rem">
+        <div>
+          <div class="codelbl"><b>1.</b> Re-resolve the CUDA context — every launch</div>
+<pre class="code" style="border-left-color:var(--classic)"><span class="c"># cudadrv/devices.py</span>
+with self._lock:
+  with driver.<span class="k">get_active_context</span>() as ac:   <span class="c"># driver query, each call</span>
+    ...</pre>
+        </div>
+        <div>
+          <div class="codelbl"><b>2.</b> Re-prep every argument</div>
+<pre class="code" style="border-left-color:var(--classic)"><span class="c"># dispatcher.py _prepare_args</span>
+for ext in reversed(self.extensions):      <span class="c"># hook loop</span>
+    ty, val = ext.prepare_args(...)
+devary = <span class="k">wrap_arg</span>(val).<span class="k">to_device</span>(retr, stream)   <span class="c"># re-wrap + convert</span></pre>
+        </div>
+        <div>
+          <div class="codelbl"><b>3.</b> Safety-wrapped driver calls (2×) + cufunc lookup</div>
+<pre class="code" style="border-left-color:var(--classic)"><span class="c"># cudadrv/driver.py — twice per launch</span>
+def <span class="k">safe_cuda_api_call</span>(*a):
+    return self._check_cuda_python_error(fname, libfn(*a))
+cufunc = self._codelibrary.<span class="k">get_cufunc</span>()   <span class="c"># lookup each launch</span></pre>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:1.1rem">
+        <div>
+          <div class="codelbl" style="color:var(--mlir)">mlir — cached fast path</div>
+<pre class="code"><span class="c"># numba_cuda_mlir/descriptor.py</span>
+type_key = tuple(type(a) for a in args)
+cached = self._sig_cache.<span class="k">get</span>(type_key)
+if cached and fast_ok:
+    return self.<span class="k">_launch</span>(argtypes, args)  <span class="c"># skip re-prep</span></pre>
+        </div>
+        <div class="kpi" style="text-align:center">
+          <div class="v"><span class="hlc">69</span> vs <span class="hl">34</span></div>
+          <div class="l">Python calls / launch · classic vs mlir</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">05 · CUDA graphs</div>
     <h2>CUDA graphs erase the gap</h2>
     <div class="legend">
       <span><i class="sw" style="background:#3a4654"></i> eager</span>
@@ -159,7 +209,7 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">05 · Codegen — registers per thread</div>
+    <div class="eyebrow">06 · Codegen — registers per thread</div>
     <h2>Slightly fewer registers — and it doesn't matter</h2>
     <div class="legend">
       <span><i class="sw" style="background:var(--classic)"></i> classic</span>
@@ -170,7 +220,7 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">06 · Codegen — SASS instruction count</div>
+    <div class="eyebrow">07 · Codegen — SASS instruction count</div>
     <h2>Fewer instructions ≠ faster here</h2>
     <div class="legend">
       <span><i class="sw" style="background:var(--classic)"></i> classic</span>
@@ -182,7 +232,7 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">07 · JIT compilation time</div>
+    <div class="eyebrow">08 · JIT compilation time</div>
     <h2>mlir compiles ~14% faster</h2>
     <div class="legend">
       <span><i class="sw" style="background:var(--classic)"></i> classic</span>
@@ -199,7 +249,7 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">08 · Fair comparison — matched optimization</div>
+    <div class="eyebrow">09 · Fair comparison — matched optimization</div>
     <h2>Match the settings, and the compilers tie</h2>
     <div class="grow" style="flex-direction:row;gap:3vw;align-items:center">
       <div style="flex:1">
@@ -212,7 +262,7 @@
       <div style="flex:1">
         <ul class="clean">
           <li><b>LTO</b> (link-time optimization) is a knob <b>both</b> compilers have.</li>
-          <li>mlir turns it <b>on</b> by default; classic leaves it <b>off</b> — that's the whole reason mlir's code looked tighter on slides 5–6.</li>
+          <li>mlir turns it <b>on</b> by default; classic leaves it <b>off</b> — that's the whole reason mlir's code looked tighter on slides 6–7.</li>
           <li>Turn LTO on for both → <span class="hl">identical, 30 regs</span>. Neither compiler is fundamentally better.</li>
         </ul>
       </div>
@@ -220,7 +270,7 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">09 · Scorecard</div>
+    <div class="eyebrow">10 · Scorecard</div>
     <h2>A tie on everything — except how fast they launch kernels</h2>
     <div class="grow">
       <table class="verdict">
@@ -239,7 +289,7 @@
   </section>
 
   <section class="slide">
-    <div class="eyebrow">10 · Takeaways</div>
+    <div class="eyebrow">11 · Takeaways</div>
     <h2>Pick on launch model, not the compiler</h2>
     <div class="grow">
       <ul class="clean">
