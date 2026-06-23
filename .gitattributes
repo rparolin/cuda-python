@@ -7,6 +7,7 @@ cuda_core/cuda/core/_include/dlpack.h -text !eol diff
 *.png binary
 *.svg binary
 *.pdf binary
+*.pptx binary
 # SCM syntax highlighting & preventing 3-way merges
 pixi.lock merge=binary linguist-language=YAML linguist-generated=true
 
