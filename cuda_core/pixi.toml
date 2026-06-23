@@ -161,6 +161,28 @@ numba-cuda = { version = "*", extras = ["cu13"] }
 [feature.numba-classic.target.linux-aarch64.pypi-dependencies]
 numba-cuda = { version = "*", extras = ["cu13"] }
 
+# Python-3.12-pinned twin of numba-mlir, so the MLIR backend can be compared
+# against numba-classic (also 3.12) with the interpreter version held constant.
+# The default numba-mlir env stays on 3.14; this twin removes that confound for
+# the JIT-time / launch-overhead / FPS comparisons.
+[feature.numba-mlir-py312.dependencies]
+python = "3.12.*"
+# numba-cuda-mlir 0.4.0 still calls np.row_stack, removed in numpy 2.5.
+numpy = "<2.5"
+pyglet = "*"
+
+[feature.numba-mlir-py312.system-requirements]
+cuda = "13"
+
+[feature.numba-mlir-py312.target.linux.dependencies]
+libgl-devel = "*"
+
+[feature.numba-mlir-py312.target.linux-64.pypi-dependencies]
+numba-cuda-mlir = { version = "*", extras = ["cu13"] }
+
+[feature.numba-mlir-py312.target.linux-aarch64.pypi-dependencies]
+numba-cuda-mlir = { version = "*", extras = ["cu13"] }
+
 # We keep both cu12 and cu13 because cuda.core works with either major version.
 # The local sibling checkouts are wired into the default/cu13/examples workflows;
 # cu12 intentionally solves against published packages instead.
@@ -178,6 +200,7 @@ docs = { features = ["cu13", "docs", "local-deps"], solve-group = "docs" }
 # local-deps path builds (which it would otherwise shadow).
 numba-mlir = { features = ["numba-mlir"] }
 numba-classic = { features = ["numba-classic"] }
+numba-mlir-py312 = { features = ["numba-mlir-py312"] }
 
 # TODO: check if these can be extracted from pyproject.toml
 [package]
