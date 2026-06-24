@@ -6,16 +6,16 @@
 <title>numba-cuda vs numba-cuda-mlir — performance analysis</title>
 <style>
   :root{
-    --bg:#ffffff; --bg2:#eef1f5; --ink:#14181d; --mut:#5b6573; --line:#d9dee4;
-    --classic:#d97a06;   /* amber  = classic numba-cuda (NVVM) */
-    --mlir:#5e9400;      /* green  = numba-cuda-mlir (MLIR)    */
-    --accent:#5e9400; --warn:#d62b2b;
+    --bg:#0c0f13; --bg2:#12171d; --ink:#e8edf2; --mut:#8b97a4; --line:#222c36;
+    --classic:#f5a524;   /* amber  = classic numba-cuda (NVVM) */
+    --mlir:#76b900;      /* green  = numba-cuda-mlir (MLIR)    */
+    --accent:#76b900; --warn:#ff5d5d;
     --mono:"SF Mono",ui-monospace,"Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
     --sans:"Helvetica Neue",Helvetica,"Segoe UI",sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
-  body{background:radial-gradient(1200px 700px at 78% -8%,#eaeff5 0%,var(--bg) 55%);
+  body{background:radial-gradient(1200px 700px at 78% -8%,#17202a 0%,var(--bg) 55%);
        color:var(--ink);font-family:var(--sans);overflow:hidden}
   .deck{height:100vh;width:100vw;position:relative}
   .slide{position:absolute;inset:0;display:none;flex-direction:column;
@@ -34,7 +34,7 @@
   .note{font-family:var(--mono);font-size:.92rem;color:var(--mut);margin-top:1rem;line-height:1.55}
   .big{font-size:2rem;font-weight:800}
   .kpis{display:flex;gap:1.4rem;flex-wrap:wrap;margin-top:1rem}
-  .kpi{background:linear-gradient(180deg,var(--bg2),#eef1f5);border:1px solid var(--line);
+  .kpi{background:linear-gradient(180deg,var(--bg2),#0e1318);border:1px solid var(--line);
        border-radius:14px;padding:1rem 1.2rem;min-width:148px}
   .kpi .v{font-size:2rem;font-weight:800;letter-spacing:-.02em}
   .kpi .l{color:var(--mut);font-family:var(--mono);font-size:.82rem;margin-top:.35rem;text-transform:uppercase;letter-spacing:.12em}
@@ -51,22 +51,21 @@
   svg{width:100%;height:100%;max-height:62vh;overflow:visible;font-family:var(--mono)}
   .ax{stroke:var(--line);stroke-width:1}
   .axtxt{fill:var(--mut);font-size:13px}
-  .gl{stroke:#e6eaef;stroke-width:1}
+  .gl{stroke:#1a232c;stroke-width:1}
   .dlbl{fill:var(--ink);font-size:13px;font-weight:700}
-  .dlblw{fill:#fff;font-size:13px;font-weight:700}
   .anno{fill:var(--mut);font-size:13px;font-style:italic}
   .hud{position:fixed;bottom:2.4vh;left:0;right:0;display:flex;justify-content:center;
        gap:.55rem;align-items:center}
-  .dot{width:8px;height:8px;border-radius:50%;background:#c7ced6;cursor:pointer;transition:.2s}
+  .dot{width:8px;height:8px;border-radius:50%;background:#2a3743;cursor:pointer;transition:.2s}
   .dot.on{background:var(--accent);transform:scale(1.35)}
   .count{position:fixed;bottom:2.1vh;right:3vw;font-family:var(--mono);color:var(--mut);font-size:.85rem}
   .nav{position:fixed;top:0;bottom:0;width:13vw;cursor:pointer;z-index:5}
   .nav.l{left:0} .nav.r{right:0}
-  .foot{position:fixed;top:2.6vh;right:3vw;font-family:var(--mono);font-size:.74rem;color:#9aa4ae}
-  .code{font-family:var(--mono);font-size:.66rem;line-height:1.42;background:#f4f6f8;
+  .foot{position:fixed;top:2.6vh;right:3vw;font-family:var(--mono);font-size:.74rem;color:#445}
+  .code{font-family:var(--mono);font-size:.66rem;line-height:1.42;background:#080b0e;
         border:1px solid var(--line);border-left:3px solid var(--mlir);border-radius:8px;
-        padding:.5rem .75rem;white-space:pre;overflow:hidden;color:#1d2530}
-  .code .c{color:#7a8694} .code .k{color:#4d7d00}
+        padding:.5rem .75rem;white-space:pre;overflow:hidden;color:#cdd6df}
+  .code .c{color:#5f6f7e} .code .k{color:#9cd11f}
   .codelbl{font-family:var(--mono);font-size:.8rem;margin:0 0 .3rem;font-weight:700}
   .codelbl b{color:var(--classic)}
   @page{size:1280px 720px;margin:0}
@@ -78,7 +77,7 @@
     .slide:last-child{page-break-after:auto;break-after:auto}
     svg{max-height:430px}
     .hud,.count,.nav{display:none !important}
-    .foot{position:absolute;color:#9aa4ae}
+    .foot{position:absolute;color:#556}
   }
 </style>
 </head>
@@ -148,8 +147,8 @@
     <div class="grow" style="flex-direction:row;gap:3vw;align-items:center">
       <div style="flex:1">
         <div class="legend" style="margin-bottom:.4rem;font-size:.85rem">
-          <span><i class="sw" style="background:#64707e"></i> GPU compute (equal)</span>
-          <span><i class="sw" style="background:#e5533d"></i> host dispatch</span>
+          <span><i class="sw" style="background:#3a4654"></i> GPU compute (equal)</span>
+          <span><i class="sw" style="background:#ff7a59"></i> host dispatch</span>
         </div>
         <div class="chartwrap"><svg id="c-launch" viewBox="0 0 520 420"></svg></div>
       </div>
@@ -212,7 +211,7 @@ if cached and fast_ok:
     <div class="eyebrow">05 · CUDA graphs</div>
     <h2>CUDA graphs erase the gap</h2>
     <div class="legend">
-      <span><i class="sw" style="background:#64707e"></i> eager</span>
+      <span><i class="sw" style="background:#3a4654"></i> eager</span>
       <span><i class="sw" style="background:var(--mlir)"></i> graphed</span>
     </div>
     <div class="chartwrap"><svg id="c-graph" viewBox="0 0 1000 460"></svg></div>
@@ -362,7 +361,7 @@ function stackedBars(svg,{labels,segments,ymax,unit,fmt}){
       const v=seg.data[gi]; total+=v;
       const h=ph*v/ymax, y=yb-h, col=seg.barColors?seg.barColors[gi]:seg.color;
       svg.appendChild(el("rect",{x,y,width:bw,height:h,rx:3,fill:col}));
-      if(h>26)svg.appendChild(txt(x+bw/2,y+h/2+5,fmt(v),"dlblw"));
+      if(h>26)svg.appendChild(txt(x+bw/2,y+h/2+5,fmt(v),"dlbl"));
       yb=y;
     });
     svg.appendChild(txt(x+bw/2,yb-12,fmt(total),"dlbl"));
@@ -391,7 +390,7 @@ function lineChart(svg,{xlabels,series,ymax,unit,annos}){
   if(unit)svg.appendChild(txt(L-52,T-8,unit,"axtxt","start"));
 }
 
-const C="#d97a06", M="#5e9400";
+const C="#f5a524", M="#76b900";
 window.addEventListener("DOMContentLoaded",()=>{
   lineChart(document.getElementById("c-fps"),{
     xlabels:["256²","512²","1024²","2048²"],
@@ -401,13 +400,13 @@ window.addEventListener("DOMContentLoaded",()=>{
   });
   stackedBars(document.getElementById("c-launch"),{
     labels:["classic","mlir"],
-    segments:[{name:"GPU compute",color:"#64707e",data:[0.34,0.34]},
-              {name:"host dispatch",color:"#e5533d",data:[0.32,0.20]}],
+    segments:[{name:"GPU compute",color:"#3a4654",data:[0.34,0.34]},
+              {name:"host dispatch",color:"#ff7a59",data:[0.32,0.20]}],
     ymax:0.8,fmt:v=>v.toFixed(2),unit:"ms / frame"
   });
   groupedBars(document.getElementById("c-graph"),{
     labels:["256² classic","256² mlir","512² classic","512² mlir"],
-    series:[{name:"eager",color:"#64707e",data:[1728,2527,1704,2294]},
+    series:[{name:"eager",color:"#3a4654",data:[1728,2527,1704,2294]},
             {name:"graphed",color:M,data:[6404,6420,2714,2511]}],
     ymax:7200,unit:"FPS"
   });
