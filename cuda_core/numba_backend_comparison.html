@@ -205,6 +205,7 @@ if cached and fast_ok:
         </div>
       </div>
     </div>
+    <p class="note" style="margin-top:.6rem"><b>The deeper cause:</b> numba-cuda passes each array by its full kernel calling convention (meminfo · parent · size · itemsize · ptr · shape · strides) — extra host marshaling <i>and</i> argument registers per launch; numba-cuda-mlir streamlines this ABI. <span style="color:var(--mut)">— mechanism per G. Markall</span></p>
   </section>
 
   <section class="slide">
