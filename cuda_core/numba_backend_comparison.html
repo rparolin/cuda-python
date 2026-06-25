@@ -119,7 +119,7 @@
       <table>
         <tr><th></th><th style="color:var(--classic)">classic</th><th style="color:var(--mlir)">mlir</th></tr>
         <tr><td>package</td><td class="c">numba-cuda 0.30.2</td><td class="m">numba-cuda-mlir 0.4.0</td></tr>
-        <tr><td>frontend</td><td class="c">Numba IR → LLVM → NVVM → PTX</td><td class="m">MLIR → PTX (LTOIR)</td></tr>
+        <tr><td>frontend</td><td class="c">Numba IR → LLVM → NVVM → PTX</td><td class="m">Numba IR → MLIR → LLVM → NVVM → PTX</td></tr>
         <tr><td>opt / LTO default</td><td class="c">NVVM opt-3, no LTO</td><td class="m">LTO, opt&gt;0</td></tr>
         <tr><td>Python</td><td class="c">3.12.13</td><td class="m">3.12.13</td></tr>
         <tr><td>cuda-bindings / ptxas</td><td class="tie">13.3.1 / CUDA 13.3</td><td class="tie">13.3.1 / CUDA 13.3</td></tr>
@@ -210,14 +210,13 @@ if cached and fast_ok:
 
   <section class="slide">
     <div class="eyebrow">05 · CUDA graphs</div>
-    <h2>CUDA graphs erase the gap</h2>
+    <h2>CUDA graphs collapse the launch gap</h2>
     <div class="legend">
       <span><i class="sw" style="background:#3a4654"></i> eager</span>
       <span><i class="sw" style="background:var(--mlir)"></i> graphed</span>
     </div>
     <div class="chartwrap"><svg id="c-graph" viewBox="0 0 1000 460"></svg></div>
-    <p class="note">Capture once, replay as a single launch. Both <span class="hl">converge to the same FPS</span> —
-    classic gains more (<span class="hlc">3.7×</span> vs 2.5×). mlir's eager edge <span class="hl">disappears</span>.</p>
+    <p class="note">Capture once, replay as one launch — both jump (classic gains more: <span class="hlc">3.7×</span> vs 3.0× at 256², 1.6× vs 1.2× at 512²). The eager gap collapses: <span class="hl">parity at 512²</span>, down to +12% at 256².</p>
   </section>
 
   <section class="slide">
@@ -307,7 +306,7 @@ if cached and fast_ok:
       <ul class="clean">
         <li><b>Same results, same kernel speed</b> — identical output; equal GPU time and occupancy.</li>
         <li><b>mlir launches kernels ~38% cheaper</b> — 5.3 vs 8.6 µs → +38% FPS below 1024².</li>
-        <li><b>CUDA graphs ≈3× FPS</b> on both backends — and erase the mlir-vs-classic gap.</li>
+        <li><b>CUDA graphs: up to ~3.7× FPS</b> when launch-bound — and collapse the mlir↔classic gap (parity at 512²).</li>
         <li><b>mlir compiles ~14% faster</b> — 1.17 s vs 1.36 s for all 9 kernels.</li>
         <li><b>Biggest latent win:</b> kernels run in float64 (Python literals); float32 would cut math on both.</li>
       </ul>
@@ -395,8 +394,8 @@ const C="#f5a524", M="#76b900";
 window.addEventListener("DOMContentLoaded",()=>{
   lineChart(document.getElementById("c-fps"),{
     xlabels:["256²","512²","1024²","2048²"],
-    series:[{color:C,data:[1579,1346,677,180]},{color:M,data:[2188,1859,671,179]}],
-    ymax:2400,unit:"FPS",
+    series:[{color:C,data:[1752,1749,780,205]},{color:M,data:[2432,2383,765,203]}],
+    ymax:2600,unit:"FPS",
     annos:[{x:0.12,y:60,t:"launch-bound"},{x:0.82,y:60,t:"compute-bound"},{x:0.66,y:430,t:"crossover ≈1024²"}]
   });
   stackedBars(document.getElementById("c-launch"),{
@@ -407,9 +406,9 @@ window.addEventListener("DOMContentLoaded",()=>{
   });
   groupedBars(document.getElementById("c-graph"),{
     labels:["256² classic","256² mlir","512² classic","512² mlir"],
-    series:[{name:"eager",color:"#3a4654",data:[1728,2527,1704,2294]},
-            {name:"graphed",color:M,data:[6404,6420,2714,2511]}],
-    ymax:7200,unit:"FPS"
+    series:[{name:"eager",color:"#3a4654",data:[1752,2432,1749,2383]},
+            {name:"graphed",color:M,data:[6451,7217,2761,2730]}],
+    ymax:7600,unit:"FPS"
   });
   const kn=["press_jac","diverg","curl","sub_grad","vorticity","colorize","adv_vel","adv_dye","splat"];
   groupedBars(document.getElementById("c-regs"),{labels:kn,
